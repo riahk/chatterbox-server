@@ -14,6 +14,31 @@ this file and include it in basic-server.js so that it actually works.
 var messages = require('./messages.json');
 var _ = require('underscore');
 var fs = require('fs');
+var express = require('express');
+
+module.exports.expressGet = function(request, response) {
+  var newMessages = messages.results.slice();
+  var orderedMessages = {results: newMessages.reverse()};
+  response.status(200).send(JSON.stringify(orderedMessages));
+};
+
+module.exports.expressGetIndex = function(request, response) {
+};
+
+module.exports.expressPost = function(request, response) {
+
+        messages.results.push(request.body);
+        console.log(messages.results[messages.results.length-1]);
+        fs.writeFile("./messages.json", JSON.stringify(messages));
+  response.status(201).send();
+};
+module.exports.expressOptions = function(request, response, next) {
+  response.header("Access-Control-Allow-Origin", "*");
+  response.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  response.header("Access-Control-Allow-Headers", "Content-Type, Accept");
+  next();
+  // fs.writeFile("./messages.json")
+}
 
 module.exports.requestHandler = function(request, response) {
 
@@ -61,6 +86,11 @@ module.exports.requestHandlerMessages = function(request, response) {
   response.writeHead(statusCode, headers);
   console.log("Serving request type " + request.method + " for url " + request.url);
   var responseBody = '';
+
+  if (request.method === "OPTIONS") {
+    response.end(responseBody);
+  }
+
   if(request.url === '/classes/messages') {
     if(request.method === "POST") {
         response.writeHead(201, headers);
