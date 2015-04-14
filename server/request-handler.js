@@ -12,6 +12,7 @@ this file and include it in basic-server.js so that it actually works.
 
 **************************************************************/
 var messages = require('./messages.json');
+var _ = require('underscore');
 var fs = require('fs');
 
 module.exports.requestHandler = function(request, response) {
@@ -54,6 +55,8 @@ module.exports.requestHandlerMessages = function(request, response) {
 
   var statusCode = 200;
   var headers = defaultCorsHeaders;
+  var dir = "/client/client";
+  var extension = _.last(request.url.match(/\.[a-zA-Z]+/g)) || "";
   headers['Content-Type'] = "JSON";
   response.writeHead(statusCode, headers);
   console.log("Serving request type " + request.method + " for url " + request.url);
@@ -62,21 +65,40 @@ module.exports.requestHandlerMessages = function(request, response) {
     if(request.method === "POST") {
         response.writeHead(201, headers);
         request.on('data', function (chunk) {
-        var chunks = JSON.parse(chunk.toString());
-        messages.results.push(chunks);
-        console.log(messages.results[messages.results.length-1]);
-        fs.writeFile("./messages.json", JSON.stringify(messages));
+          var chunks = JSON.parse(chunk.toString());
+          messages.results.push(chunks);
+          console.log(messages.results[messages.results.length-1]);
+          fs.writeFile("./messages.json", JSON.stringify(messages), function () {response.end(responseBody);});
       });
 
     } else if(request.method === "GET") {
         responseBody = JSON.stringify(messages);
         response.writeHead(200, headers);
+        response.end(responseBody);
     }
-  } else { response.writeHead(404, headers); }
+  } else if (request.url === '/'){
+      fs.readFile(".."+dir+"/index.html", function (err, data) {
+        headers['Content-Type'] = "text/html";
+        response.writeHead(200, headers);
+        responseBody = data.toString();
+        response.end(responseBody);
+      });
+  } else if (extension.slice(1) === "js" || extension.slice(1) === "css"){
+      fs.readFile(".."+dir+request.url, function (err, data) {
+        // console.log(data);
+        var type = _.last(request.url.match(/\.[a-zA-Z]+/g)).slice(1);
+        console.log(type)
+        type = type === "js" ? "javascript" : type;
+        headers['Content-Type'] = "text/"+type;
+        response.writeHead(200, headers);
+        responseBody = data.toString();
+        response.end(responseBody);
+      });
+  }
+  else { response.writeHead(404, headers); response.end(responseBody);}
 
 
 
-  response.end(responseBody);
 };
 
 var defaultCorsHeaders = {
